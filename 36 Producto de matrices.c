@@ -7,9 +7,8 @@
 
 //PROTORIPOS//
 void productoE(int[FIL1][COL1],int[FIL2][COL2],int[FIL1][COL2]);
-void mostrarMatriz1(int[FIL1][COL1]);
-void mostrarMatriz2(int[FIL2][COL2]);
-void mostrarMatriz3(int[FIL1][COL2]);
+void mostrarMatriz(int*,int,int);
+
 
 
 //MAIN//
@@ -20,9 +19,9 @@ void main()
     int m3[FIL1][COL2]={0};
 
     printf("MATRIZ 1\n");
-    mostrarMatriz1(m1);
+    mostrarMatriz(m1,FIL1,COL1);
     printf("\nMATRIZ 2\n");
-    mostrarMatriz2(m2);
+    mostrarMatriz(m2,FIL2,COL2);
 
     if(COL1!=FIL2)
     {
@@ -32,44 +31,18 @@ void main()
 
     productoE(m1,m2,m3);
     printf("MATRIZ RESULTANTE\n");
-    mostrarMatriz3(m3);
+    mostrarMatriz(m3,FIL1,COL2);
 }
 
 //FUNCIONES//
-void mostrarMatriz1(int m[FIL1][COL1])
+void mostrarMatriz(int *m,int fil,int col)
 {
     int i,j;
-    for(i=0;i<FIL1;i++)
+    for(i=0;i<fil;i++)
     {
-        for(j=0;j<COL1;j++)
+        for(j=0;j<col;j++)
         {
-            printf("%d\t",m[i][j]);
-        }
-    printf("\n");
-    }
-}
-
-void mostrarMatriz2(int m[FIL2][COL2])
-{
-    int i,j;
-    for(i=0;i<FIL2;i++)
-    {
-        for(j=0;j<COL2;j++)
-        {
-            printf("%d\t",m[i][j]);
-        }
-    printf("\n");
-    }
-}
-
-void mostrarMatriz3(int m[FIL1][COL2])
-{
-    int i,j;
-    for(i=0;i<FIL1;i++)
-    {
-        for(j=0;j<COL2;j++)
-        {
-            printf("%d\t",m[i][j]);
+            printf("%d\t",*(m+j+(i*col)));
         }
     printf("\n");
     }
