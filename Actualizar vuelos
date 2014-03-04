@@ -1,0 +1,260 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#define SIN_MEMORIA 0
+#define TODO_BIEN 1
+#define COLA_VACIA 0
+
+//**********ESTRUCTURAS**********//
+typedef struct
+{
+    int dd,
+        mm,
+        aa;
+}t_fecha;
+
+typedef struct
+{
+    char nombre[25];
+    int dni;
+    t_fecha fecha;
+}t_dato;
+
+typedef struct s_nodo
+{
+    t_dato dato;
+    struct s_nodo *sig;
+}t_nodo;
+
+typedef struct
+{
+    t_nodo *pri;
+    t_nodo *ult;
+}t_cola;
+
+typedef t_nodo* t_lista;
+
+//**********PROTOTIPOS**********//
+
+void abrirArchivo(FILE**,char*,char*);
+void mostrarArchivo(FILE*);
+void crearLista(t_lista *);
+void crearCola(t_cola *);
+void cargarLista(FILE *,t_lista *);
+int ponerEnLista(t_lista *,t_dato *);
+int cargarCola(FILE *,t_cola *);
+int ponerEnCola(t_cola *,t_dato *);
+void procesarReservas(t_lista *,t_cola *,int *);
+int buscarEnLista(t_lista *,t_cola *,int);
+int desacolar(t_cola *,t_dato *);
+void mostrarLista(t_lista *);
+
+//**********MAIN**********//
+void main()
+{
+    FILE *pfPas,*pfEsp;
+    t_dato dato;
+    t_lista lista;
+    t_cola cola;
+    int cant=0;
+
+    abrirArchivo(&pfPas,"C:\\Users\\Nico\\Desktop\\UNLaM\\Programación\\Curso de Verano\\Practica para el 1er parcial\\Archivo vuelos\\pasajeros.dat","rb");
+    abrirArchivo(&pfEsp,"C:\\Users\\Nico\\Desktop\\UNLaM\\Programación\\Curso de Verano\\Practica para el 1er parcial\\Archivo vuelos\\espera.dat","rb");
+
+    crearLista(&lista);
+    crearCola(&cola);
+
+    cargarLista(pfPas,&lista); //CARGA LA LISTA CON LOS DATOS DE PASAJEROS
+    cant=cargarCola(pfEsp,&cola); //DEVUELVE LA CANTIDAD CARGADA PARA LUEGO SABER CUANTOS QUEDAN AL SACAR DE LA COLA
+
+    procesarReservas(&lista,&cola,&cant); //REALIZA TODO EL PROCESO DE BUSQUEDA Y REEMPLAZO
+
+    mostrarLista(&lista);
+    printf("\nEN LA COLA QUEDARON %d PERSONAS EN ESPERA",cant);
+
+    fclose(pfPas);
+    fclose(pfEsp);
+}
+
+
+//**********FUNCIONES**********//
+void abrirArchivo(FILE **file,char *ruta,char *modo)
+{
+    *file=fopen(ruta,modo);
+    if(!(*file))
+    {
+        printf("\nNO SE PUDO ABRIR EL ARCHIVO");
+        exit(1);
+    }
+}
+
+void mostrarArchivo(FILE *file)
+{
+    t_dato dato;
+
+    fseek(file,0,0);
+    fread(&dato,sizeof(t_dato),1,file);
+    while(!feof(file))
+    {
+        printf("\nNOMBRE: ");
+        puts(dato.nombre);
+        printf("DNI: %d",dato.dni);
+        printf("\nFECHA DE VUELO: %d-%d-%d\n",dato.fecha.dd,dato.fecha.mm,dato.fecha.aa);
+        fread(&dato,sizeof(t_dato),1,file);
+    }
+}
+
+void crearLista(t_lista *pl)
+{
+    *pl=NULL;
+}
+
+void crearCola(t_cola *pc)
+{
+    pc->pri=NULL;
+    pc->ult=NULL;
+}
+
+void cargarLista(FILE *file,t_lista *pl)
+{
+    t_dato dato;
+
+    fread(&dato,sizeof(t_dato),1,file);
+    while(!feof(file))
+    {
+        if(ponerEnLista(pl,&dato)==0)
+        {
+            printf("\nNO HAY MEMORIA");
+            exit(1);
+        }
+        fread(&dato,sizeof(t_dato),1,file);
+    }
+    printf("\nLISTA CARGADA");
+}
+
+int ponerEnLista(t_lista *pl,t_dato *d)
+{
+    t_nodo *nue;
+
+    nue=(t_nodo *)malloc(sizeof(t_nodo));
+    if(!nue)
+        return SIN_MEMORIA;
+
+    nue->dato=*d;
+    nue->sig=*pl;
+    *pl=nue;
+    return TODO_BIEN;
+}
+
+int cargarCola(FILE *file,t_cola *pc)
+{
+    t_dato dato;
+    int c=0;
+
+    fread(&dato,sizeof(t_dato),1,file);
+    while(!feof(file))
+    {
+        if(ponerEnCola(pc,&dato)==0)
+        {
+            printf("\nNO HAY MEMORIA");
+            exit(1);
+        }
+        c++;
+        fread(&dato,sizeof(t_dato),1,file);
+    }
+    printf("\nCOLA CARGADA");
+    return c;
+}
+
+int ponerEnCola(t_cola *pc,t_dato *d)
+{
+    t_nodo *nue;
+
+    nue=(t_nodo *)malloc(sizeof(t_nodo));
+    if(!nue)
+        return SIN_MEMORIA;
+
+    nue->dato=*d;
+    nue->sig=NULL;
+    if(pc->pri==NULL)
+        pc->pri=nue;
+    else
+        pc->ult->sig=nue;
+    pc->ult=nue;
+    return TODO_BIEN;
+}
+
+void procesarReservas(t_lista *pl,t_cola *pc,int *cant)
+{
+    int dniRes; //DNI QUE SE INGRESA POR TECLADO PARA AQUELLOS QUE NO CONFIRMARON RESERVA
+    t_lista aux;
+    aux=(*pl); //GUARDAMOS PRIMER POSICION DE LA LISTA
+
+    printf("\nIngrese DNI del pasajero que no confirmo su reserva: ");
+    scanf("%d",&dniRes);
+    while(dniRes!=0)
+    {
+        if(buscarEnLista(pl,pc,dniRes)==0) //BUSCA DNI, SACA DE COLA Y ACTUALIZA LA LISTA
+            printf("ERROR");
+        else
+            (*cant)--;
+        *pl=aux;
+        printf("\nIngrese DNI del pasajero que no confirmo su reserva: ");
+        scanf("%d",&dniRes);
+    }
+}
+
+
+int buscarEnLista(t_lista *pl,t_cola *pc,int doc)
+{
+    t_dato dato;
+
+    while(*pl && doc!=(*pl)->dato.dni) //MUEVO HASTA ENCONTRAR DNI
+    {
+        (*pl)=(*pl)->sig;
+    }
+    if(!(*pl)) //SI NO ENCONTRE RETORNO UN 0
+        return 0;
+
+    if(desacolar(pc,&dato)) // SI ENCONTRE SACO DE COLA Y REEMPLAZO EN LA LISTA
+        (*pl)->dato=dato;
+    else //SI NO PUDE DESACOLAR COLOCO VACANTE EN LA LISTA
+    {
+        strcpy((*pl)->dato.nombre,"VACANTE");
+        (*pl)->dato.dni=0;
+        (*pl)->dato.fecha.dd=0;
+        (*pl)->dato.fecha.mm=0;
+        (*pl)->dato.fecha.aa=0;
+        return 0;
+    }
+    return TODO_BIEN;
+}
+
+int desacolar(t_cola *pc,t_dato *d)
+{
+    t_nodo *aux;
+
+    if(pc->pri==NULL)
+        return COLA_VACIA;
+    aux=pc->pri;
+    *d=aux->dato;
+    if(pc->ult==pc->pri && pc->ult!=NULL)
+        pc->ult=NULL;
+    pc->pri=aux->sig;
+    free(aux);
+    return TODO_BIEN;
+}
+
+void mostrarLista(t_lista *pl)
+{
+    printf("\n\nLISTA");
+    while((*pl))
+    {
+        printf("\nNOMBRE: ");
+        puts((*pl)->dato.nombre);
+        printf("DNI: %d",(*pl)->dato.dni);
+        printf("\nFECHA: %d-%d-%d",(*pl)->dato.fecha.dd,(*pl)->dato.fecha.mm,(*pl)->dato.fecha.aa);
+        printf("\n");
+        (*pl)=(*pl)->sig;
+    }
+}
