@@ -1,0 +1,382 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+////////////////////////ESTRUCTURAS////////////////////////
+//ARCHIVO BINARIO//
+typedef struct
+{
+    int min,
+        max,
+        act;
+}t_binario;
+
+//INDICE-ARBOL//
+typedef struct
+{
+    char cod[6];
+    int reg;
+}t_dato_arbol;
+
+
+typedef struct s_nodo_arbol
+{
+    struct s_nodo_arbol *izq;
+    t_dato_arbol dato;
+    struct s_nodo_arbol *der;
+}t_nodo_arbol;
+
+typedef t_nodo_arbol* t_arbol;
+
+//COLA//
+typedef struct
+{
+    char cod[6];
+    int cant;
+    char nom[20];
+}t_dato_cola;
+
+typedef struct s_nodo_cola
+{
+    t_dato_cola dato;
+    struct s_nodo_cola *sig;
+}t_nodo_cola;
+
+typedef t_nodo_cola* t_cola;
+
+//LISTA//
+typedef struct
+{
+    char cod[6];
+    int cant;
+}t_dato_lista;
+
+typedef struct s_nodo_lista
+{
+    struct s_nodo_lista *ant;
+    t_dato_lista dato;
+    struct s_nodo_lista *sig;
+}t_nodo_lista;
+
+typedef t_nodo_lista* t_lista;
+////////////////////////PROTOTIPOS////////////////////////
+void abrirArchivo(FILE**, char *,char *);
+int ingresarDatoArch(t_binario *);
+void crearCola(t_cola *);
+int ingresarDatoCola(t_dato_cola *);
+int ponerEnCola(t_cola *,t_dato_cola *);
+void crearArbol(t_arbol *);
+int ingresarDatoArbol(t_dato_arbol *);
+int ponerEnArbol(t_arbol *,t_dato_arbol *);
+int sacarDeCola(t_cola *,t_dato_cola *);
+int buscarEnArbol(t_arbol *, char *);
+int ponerEnLista(t_lista *,t_dato_lista *);
+int comparar(t_dato_lista *,t_dato_lista *);
+void mostrarLista(t_lista *);
+void crearLista(t_lista *);
+
+////////////////////////MAIN////////////////////////
+void main()
+{
+    FILE *pfBin,*pfTxt;
+    t_lista lista;
+    t_cola cola;
+    t_arbol arbol;
+    t_binario regBin;
+    t_dato_lista datoLista;
+    t_dato_cola datoCola;
+    t_dato_arbol datoArbol;
+    int reg, opc=1;
+        printf("\n***MENU***\n\
+1- CARGAR ARCHIVO STOCK\n\
+2- CARGAR COLA PEDIDOS\n\
+3- CARGAR ARBOL INDICE\n\
+4- EJECUTAR\n\
+5- MOSTRAR LISTA PEDIDOS A PROVEEDORES\n\
+6- MOSTRAR ARCHIVO\n\
+0- SALIR\n\n\
+INGRESE OPCION: ");
+        scanf("%d",&opc);
+
+    while(opc!=0)
+    {
+        switch(opc)
+        {
+            case 1:
+                abrirArchivo(&pfBin,"C:\\Users\\Nico\\Desktop\\UNLaM\\Programación\\Curso de Verano\\Practica para el 2do parcial\\Integrador\\stock.dat","wb");
+                while(ingresarDatoArch(&regBin)) //TERMINA INGRESANDO MIN=0
+                    fwrite(&regBin,sizeof(t_binario),1,pfBin);
+                fclose(pfBin);
+            break;
+
+            case 2:
+                crearCola(&cola);
+                while(ingresarDatoCola(&datoCola)) //TERMINA CON CANTIDAD=0
+                    if(!ponerEnCola(&cola,&datoCola))
+                        printf("\nNO SE PUDO CARGAR EN COLA");
+            break;
+
+            case 3:
+                crearArbol(&arbol);
+                while(ingresarDatoArbol(&datoArbol)) //TERMINA CON NUMERO DE REGISTRO 0
+                    if(!ponerEnArbol(&arbol,&datoArbol))
+                        printf("\nNO SE PUDO CARGAR EN ARBOL");
+            break;
+
+            case 4:
+                crearLista(&lista);
+                abrirArchivo(&pfBin,"C:\\Users\\Nico\\Desktop\\UNLaM\\Programación\\Curso de Verano\\Practica para el 2do parcial\\Integrador\\stock.dat","r+b");
+                abrirArchivo(&pfTxt,"C:\\Users\\Nico\\Desktop\\UNLaM\\Programación\\Curso de Verano\\Practica para el 2do parcial\\Integrador\\pendientes.txt","wt");
+                while(sacarDeCola(&cola,&datoCola))
+                {
+                    reg=buscarEnArbol(&arbol,datoCola.cod); //OBTENGO REGISTRO CORRESPONDIENTE AL CODIGO
+                    fseek(pfBin,sizeof(t_binario)*(reg-1),0); //VOY AL REGISTRO
+                    fread(&regBin,sizeof(t_binario),1,pfBin); //LEO EL REGISTRO
+                    if(datoCola.cant>regBin.act) //SI EL PEDIDO EXCEDE MI STOCK ACTUAL
+                        fprintf(pfTxt,"%s|%d|%s\n",datoCola.cod,datoCola.cant,datoCola.nom); //GUARDO EL PEDIDO EN PENDIENTES
+                    else
+                       {
+                         regBin.act-=datoCola.cant;
+                         fseek(pfBin,-sizeof(t_binario),1);
+                         fwrite(&regBin,sizeof(t_binario),1,pfBin);
+                       }
+                    datoLista.cant=datoCola.cant;
+                    strcpy(datoLista.cod,datoCola.cod);
+                    if(!ponerEnLista(&lista,&datoLista))
+                        printf("\nNO SE PUDO CARGAR EN LISTA");
+                }
+                fclose(pfBin);
+                fclose(pfTxt);
+            break;
+
+            case 5:
+                printf("\nPEDIDOS A PROVEEDORES\n");
+                mostrarLista(&lista);
+            break;
+
+            case 6:
+                abrirArchivo(&pfBin,"C:\\Users\\Nico\\Desktop\\UNLaM\\Programación\\Curso de Verano\\Practica para el 2do parcial\\Integrador\\stock.dat","r+b");
+                fread(&regBin,sizeof(t_binario),1,pfBin);
+                while(!feof(pfBin))
+                {
+                    printf("\nMIN: %d\tMAX: %d\tACT: %d",regBin.min,regBin.max,regBin.act);
+                    fread(&regBin,sizeof(t_binario),1,pfBin);
+                }
+                fclose(pfBin);
+            break;
+        }
+        printf("\n***MENU***\n\
+1- CARGAR ARCHIVO STOCK\n\
+2- CARGAR COLA PEDIDOS\n\
+3- CARGAR ARBOL INDICE\n\
+4- EJECUTAR\n\
+5- MOSTRAR LISTA PEDIDOS A PROVEEDORES\n\
+6- MOSTRAR ARCHIVO\n\
+0- SALIR\n\n\
+INGRESE OPCION: ");
+        scanf("%d",&opc);
+    }
+
+}
+
+////////////////////////FUNCIONES////////////////////////
+void abrirArchivo(FILE**file, char *ruta,char *modo)
+{
+    *file=fopen(ruta,modo);
+    if(!(*file))
+    {
+        printf("\nNO SE PUDO ABRIR EL ARCHIVO");
+        exit(1);
+    }
+}
+
+int ingresarDatoArch(t_binario *d)
+{
+    printf("\nINGRESE STOCK MINIMO: ");
+    scanf("%d",&d->min);
+    if(d->min==0)
+        return 0;
+    printf("\nINGRESE STOCK MAXIMO: ");
+    scanf("%d",&d->max);
+    d->act=d->max;
+    return 1;
+}
+
+void crearCola(t_cola *pc)
+{
+    *pc=NULL;
+}
+
+int ingresarDatoCola(t_dato_cola *d)
+{
+    printf("\nINGRESE CANTIDAD PEDIDA: ");
+    scanf("%d",&d->cant);
+    if(d->cant==0)
+        return 0;
+    fflush(stdin);
+    printf("\nINGRESE CODIGO: ");
+    gets(d->cod);
+    printf("\nINGRESE NOMBRE DE CLIENTE: ");
+    gets(d->nom);
+    return 1;
+}
+
+int ponerEnCola(t_cola *pc,t_dato_cola *d)
+{
+    t_nodo_cola *nue;
+    nue=(t_nodo_cola *)malloc(sizeof(t_nodo_cola));
+    if(!nue)
+        return 0;
+
+    nue->dato=*d;
+
+    if(!(*pc))
+        nue->sig=nue;
+    else
+    {
+        nue->sig=(*pc)->sig;
+        (*pc)->sig=nue;
+    }
+    *pc=nue;
+    return 1;
+}
+
+void crearArbol(t_arbol *pa)
+{
+    *pa=NULL;
+}
+
+int ingresarDatoArbol(t_dato_arbol *d)
+{
+    printf("\nINGRESE NUMERO DE REGISTRO: ");
+    scanf("%d",&d->reg);
+    if(d->reg==0)
+        return 0;
+    fflush(stdin);
+    printf("\nINGRESE CODIGO DE PRODUCTO: ");
+    gets(d->cod);
+    return 1;
+}
+
+int ponerEnArbol(t_arbol *pa,t_dato_arbol *d)
+{
+    int cmp;
+
+    if(*pa)
+    {
+        cmp=strcmp(d->cod,(*pa)->dato.cod);
+        if(cmp>0)
+            ponerEnArbol(&(*pa)->der,d);
+        else
+            ponerEnArbol(&(*pa)->izq,d);
+    }
+    else
+    {
+        *pa=(t_nodo_arbol *)malloc(sizeof(t_nodo_arbol));
+        if(!(*pa))
+            return 0;
+        (*pa)->dato=*d;
+        (*pa)->der=(*pa)->izq=NULL;
+        return 1;
+    }
+}
+
+int sacarDeCola(t_cola *pc,t_dato_cola *d)
+{
+    t_nodo_cola *aux;
+
+    if(!(*pc))
+        return 0;
+
+    aux=(*pc)->sig;
+    *d=aux->dato;
+    if(aux->sig==aux)
+        *pc=NULL;
+    else
+        (*pc)->sig=aux->sig;
+    free(aux);
+    return 1;
+}
+
+int buscarEnArbol(t_arbol *pa, char *cod)
+{
+    int cmp;
+
+    if(*pa)
+    {
+        cmp=strcmp(cod,(*pa)->dato.cod);
+        if(cmp>0)
+            buscarEnArbol(&(*pa)->der,cod);
+        if(cmp<0)
+            buscarEnArbol(&(*pa)->izq,cod);
+        if(cmp==0)
+            return (*pa)->dato.reg;
+    }
+}
+
+int ponerEnLista(t_lista *pl,t_dato_lista *d)
+{
+    t_nodo_lista *ant,*act,*nue;
+
+    act=*pl;
+    if(!act)
+        ant=NULL;
+    else
+        ant=act->ant;
+    while(act && comparar(d,&act->dato)>0)
+    {
+        ant=act;
+        act=act->sig;
+    }
+    while(ant && comparar(d,&ant->dato)<=0)
+    {
+        act=ant;
+        ant=ant->ant;
+    }
+    if(act && comparar(d,&act->dato)==0)
+    {
+        act->dato.cant+=d->cant; //ACUMULO CANTIDAD
+    }
+    else
+    {
+        nue=(t_nodo_lista *)malloc(sizeof(t_nodo_lista));
+        if(!nue)
+            return 0;
+
+        nue->dato=*d;
+        nue->sig=act;
+        nue->ant=ant;
+        if(ant)
+            ant->sig=nue;
+        if(act)
+            act->ant=nue;
+        *pl=nue;
+    }
+    return 1;
+}
+
+int comparar(t_dato_lista *d1,t_dato_lista *d2)
+{
+    return strcmp(d1->cod,d2->cod);
+}
+
+void mostrarLista(t_lista *pl)
+{
+    if(!(*pl))
+        return;
+
+    while((*pl)->ant!=NULL)
+        pl=&(*pl)->ant;
+    while((*pl))
+    {
+        printf("\nCODIGO: ");
+        puts((*pl)->dato.cod);
+        printf("CANTIDAD: %d",(*pl)->dato.cant);
+        pl=&(*pl)->sig;
+    }
+}
+
+void crearLista(t_lista *pl)
+{
+    *pl=NULL;
+}
