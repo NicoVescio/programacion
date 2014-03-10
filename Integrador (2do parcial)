@@ -1,0 +1,242 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+///////////////ESTRUCTURAS///////////////
+typedef struct
+{
+    float imp;
+}t_archivo;
+
+typedef struct
+{
+    int nroReg;
+    float porc;
+}t_dato_arbol;
+
+typedef struct s_nodo_arbol
+{
+    struct s_nodo_arbol *izq;
+    t_dato_arbol dato;
+    struct s_nodo_arbol *der;
+}t_nodo_arbol;
+
+typedef t_nodo_arbol* t_arbol;
+
+typedef struct
+{
+    int altura;
+}t_dato_cola;
+
+typedef struct s_nodo_cola
+{
+    t_dato_cola dato;
+    struct s_nodo_cola *sig;
+}t_nodo_cola;
+
+typedef t_nodo_cola* t_cola;
+///////////////FUNCIONES///////////////
+void abrirArchivo(FILE **,char *,char *);
+void cargarArchivo(FILE *);
+void mostrarArchivo(FILE *);
+void crearColaC(t_cola *);
+int ingresarDatoCola(t_dato_cola *);
+int ponerEnColaC(t_cola *,t_dato_cola *);
+void crearArbol(t_arbol *);
+int ingresarDatoArbol(t_dato_arbol *);
+int cargarArbol(t_arbol *,t_dato_arbol *);
+int sacarDeCola(t_cola *,t_dato_cola *);
+void procesarAltura(t_arbol *,FILE *,int);
+
+/////////////////MAIN/////////////////
+void main()
+{
+    FILE *pf;
+    t_archivo reg;
+    t_arbol arbol;
+    t_dato_arbol datoArbol;
+    t_cola cola;
+    t_dato_cola datoCola;
+    int opc;
+
+    printf("\nDESEA CARGAR EL ARCHIVO? (1:SI - 0:NO) ");
+    scanf("%d",&opc);
+    if(opc==1)
+    {
+        abrirArchivo(&pf,"C:\\Users\\Nico\\Desktop\\UNLaM\\Programación\\Curso de Verano\\Practica para el 2do parcial\\Integrador II\\clientes.dat","wb");
+        cargarArchivo(pf);
+        fclose(pf);
+    }
+    abrirArchivo(&pf,"C:\\Users\\Nico\\Desktop\\UNLaM\\Programación\\Curso de Verano\\Practica para el 2do parcial\\Integrador II\\clientes.dat","r+b");
+    printf("\nARCHIVO ORIGINAL\n");
+    mostrarArchivo(pf);
+
+    crearColaC(&cola);
+    while(ingresarDatoCola(&datoCola)) //TERMINA CUANDO INGRESO ALTURA=0
+        if(!ponerEnColaC(&cola,&datoCola))
+            printf("\nNO SE PUDO PONER EN COLA");
+
+    crearArbol(&arbol);
+    while(ingresarDatoArbol(&datoArbol)) //TERMINA CUANDO INGRESO REGISTRO=0
+        if(!cargarArbol(&arbol,&datoArbol))
+            printf("\nNO SE PUDO CARGAR EN ARBOL");
+
+    while(sacarDeCola(&cola,&datoCola)) //MIENTRAS PUEDA SACAR DE COLA
+    {
+        procesarAltura(&arbol,pf,datoCola.altura); //ACTUALIZA LOS REGISTROS DEL ARCHIVO QUE SE ENCUENTRAN EN ESA ALTURA
+    }
+
+    printf("\nARCHIVO MODIFICADO\n");
+    fseek(pf,0,0);
+    mostrarArchivo(pf);
+    fclose(pf);
+}
+///////////////FUNCIONES///////////////
+void abrirArchivo(FILE **file,char *ruta,char *modo)
+{
+    *file=fopen(ruta,modo);
+    if(!(*file))
+    {
+        printf("\nNO SE PUDO ABRIR EL ARCHIVO");
+        exit(1);
+    }
+}
+
+void cargarArchivo(FILE *file)
+{
+    t_archivo reg;
+    float imp;
+
+    printf("\nIngrese un importe: ");
+    scanf("%f",&imp);
+    while(imp!=0)
+    {
+        reg.imp=imp;
+        fwrite(&reg,sizeof(t_archivo),1,file);
+        printf("\nIngrese un importe: ");
+        scanf("%f",&imp);
+    }
+}
+
+void mostrarArchivo(FILE *file)
+{
+    t_archivo reg;
+
+    fread(&reg,sizeof(t_archivo),1,file);
+    while(!feof(file))
+    {
+        printf("%.2f\n",reg.imp);
+        fread(&reg,sizeof(t_archivo),1,file);
+    }
+}
+
+void crearColaC(t_cola *pc)
+{
+    *pc=NULL;
+}
+
+int ingresarDatoCola(t_dato_cola *d)
+{
+    printf("\nIngrese una altura: ");
+    scanf("%d",&d->altura);
+    return d->altura;
+}
+
+int ponerEnColaC(t_cola *pc,t_dato_cola *d)
+{
+    t_nodo_cola *nue;
+    nue=(t_nodo_cola *)malloc(sizeof(t_nodo_cola));
+    if(!nue)
+        return 0;
+
+    nue->dato=*d;
+    if(!(*pc))
+        nue->sig=nue;
+    else
+    {
+        nue->sig=(*pc)->sig;
+        (*pc)->sig=nue;
+    }
+    (*pc)=nue;
+    return 1;
+}
+
+void crearArbol(t_arbol *pa)
+{
+    *pa=NULL;
+}
+
+int ingresarDatoArbol(t_dato_arbol *d)
+{
+    float porcent;
+
+    printf("\nIngrese numero de registro: ");
+    scanf("%d",&d->nroReg);
+    if(d->nroReg==0)
+        return 0;
+    printf("Ingrese el porcentaje de aumento: ");
+    scanf("%f",&porcent);
+    d->porc=porcent;
+    return 1;
+}
+
+int cargarArbol(t_arbol *pa,t_dato_arbol *d)
+{
+    int cmp;
+    if(*pa)
+    {
+        cmp=(d->nroReg)-((*pa)->dato.nroReg);
+        if(cmp>0)
+            cargarArbol(&(*pa)->der,d);
+        if(cmp<0)
+            cargarArbol(&(*pa)->izq,d);
+    }
+    else
+    {
+        *pa=(t_nodo_arbol *)malloc(sizeof(t_nodo_arbol));
+        if(!(*pa))
+            return 0;
+        (*pa)->dato=*d;
+        (*pa)->der=(*pa)->izq=NULL;
+        return 1;
+    }
+}
+
+int sacarDeCola(t_cola *pc,t_dato_cola *d)
+{
+    t_nodo_cola *aux;
+    if(!(*pc))
+        return 0;
+
+    aux=(*pc)->sig;
+    *d=aux->dato;
+    if(aux->sig==aux)
+        *pc=NULL;
+    else
+        (*pc)->sig=aux->sig;
+    free(aux);
+    return 1;
+}
+
+void procesarAltura(t_arbol *pa,FILE *file,int alt)
+{
+    t_archivo reg;
+    if(*pa)
+    {
+        if(alt==1)
+        {
+            fseek(file,sizeof(t_archivo)*(((*pa)->dato.nroReg)-1),0);
+            fread(&reg,sizeof(t_archivo),1,file);
+            reg.imp=reg.imp+((reg.imp*((*pa)->dato.porc))/100);
+            printf("%.2f",&(*pa)->dato.porc);
+            fseek(file,-sizeof(t_archivo),1);
+            fwrite(&reg,sizeof(t_archivo),1,file);
+            fseek(file,0,1);
+        }
+        else
+        {
+            procesarAltura(&(*pa)->izq,file,alt-1);
+            procesarAltura(&(*pa)->der,file,alt-1);
+        }
+    }
+}
+
